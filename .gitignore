@@ -1,0 +1,10 @@
+*.pyc
+*.ipynb
+*.zip
+
+.ipynb_checkpoints
+.vscode
+__pycache__
+
+
+
