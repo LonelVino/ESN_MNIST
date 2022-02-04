@@ -10,29 +10,28 @@
 
 ##### **(1.1) Hidden Layer**
 
-$$
-\mathbf{x}(k+1)=f(\mathbf{W}^{res}\mathbf{x}(k)+\mathbf{W}^{in}\mathbf{u}(k+1)+\mathbf{W}^{fb}\mathbf{y}(k))
-$$
-where **x**(*k*) is the *N*-dimensional reservoir state, *f* is a sigmoid function (usually the logistic sigmoid or the $\tanh$ function), **W**$^{res}$ is the *N*×*N* reservoir weight matrix, **W**$^{in}$ is the *N*×*P* input weight matrix, **u**(*k*) is the *P* dimensional input signal, **W**$^{fb}$ is the *N*×*M* output feedback matrix, and **y**(*k*) is the *M*-dimensional output signal.
+<img src="https://latex.codecogs.com/svg.image?\mathbf{x}(k&plus;1)=f(\mathbf{W}^{res}\mathbf{x}(k)&plus;\mathbf{W}^{in}\mathbf{u}(k&plus;1)&plus;\mathbf{W}^{fb}\mathbf{y}(k))" title="\mathbf{x}(k+1)=f(\mathbf{W}^{res}\mathbf{x}(k)+\mathbf{W}^{in}\mathbf{u}(k+1)+\mathbf{W}^{fb}\mathbf{y}(k))" />
 
-> - **W**$^{res}$, **W**$^{in}$, **W**$^{fb}$ are generated randomly and fixed. 
-> - In this task, the output feedback isn’t required, thus **W**$^{fb}$ is nulled. 
+where **x**(*k*) is the *N*-dimensional reservoir state, *f* is a sigmoid function (usually the logistic sigmoid or the tanh function), <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{res}" title="\mathbf{W}^{res}" /> is the *N*×*N* reservoir weight matrix, <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{in}" title="\mathbf{W}^{in}" /> is the *N*×*P* input weight matrix, **u**(*k*) is the *P* dimensional input signal, <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{fb}" title="\mathbf{W}^{fb}" /> is the *N*×*M* output feedback matrix, and **y**(*k*) is the *M*-dimensional output signal.
+
+> - <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{res}" title="\mathbf{W}^{res}" />, <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{in}" title="\mathbf{W}^{in}" />, <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{fb}" title="\mathbf{W}^{fb}" /> are generated randomly and fixed. 
+> - In this task, the output feedback isn’t required, thus <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{fb}" title="\mathbf{W}^{fb}" /> is nulled. 
 
 ##### **(1.2) Output (Readout) Layer**
 
 The extended system state <u>**z**(*k*)=[**x**(*k*);**u**(*k*)]</u> at time *k* is the concatenation of the reservoir and input states. The output is obtained from the extended system state by:
-$$
-y(n)=g_{out}(\mathbf{W}^{out}z(n))
-$$
-where $g_{out}=[g_{out}^1,...,g_{out}^M]$ is the output activation functions (typically linear or a sigmoid) and **W**$^{out}$ is a *M*×(*P*+*N*)-dimensional matrix of output weights.
+
+<img src="https://latex.codecogs.com/svg.image?y(n)=g_{out}(\mathbf{W}^{out}z(n))" title="y(n)=g_{out}(\mathbf{W}^{out}z(n))" />
+
+where <img src="https://latex.codecogs.com/svg.image?g_{out}=[g_{out}^1,...,g_{out}^M]" title="g_{out}=[g_{out}^1,...,g_{out}^M]" /> is the output activation functions (typically linear or a sigmoid) and <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{out}" title="\mathbf{W}^{out}" /> is a *M*×(*P*+*N*)-dimensional matrix of output weights.
 
 ### (2) Learning Equation
 
-The desired output weights **W**$^{out}$ are the linear regression weights of the desired output **d**$(k)$ on the harvested extended states **z**$(k)$, which is called as readout weights, the only learnable parameters of the reservoir computer architecture in this project: 
-$$
-\mathbf{W^{out}} = \norm{\mathbf{Y}_t-\mathbf{W}^{out}\mathbf{X}}^2+\lambda\norm{\mathbf{W^{out}}}^2
-$$
-which is an offline algorithm. Here, $\mathbf{Y}_t\in\mathbb{R}^{m\times k_{tr}}$ is the target matrix containing the $k_{tr]}$ targets values for the $m$ outputs of the reservoir computer, when inputs vbectors are fed to the reservoir during $k_{tr}$ time steps. 
+The desired output weights <img src="https://latex.codecogs.com/svg.image?\mathbf{W}^{out}" title="\mathbf{W}^{out}" /> are the linear regression weights of the desired output **d** *(k)* on the harvested extended states **z** *(k)*, which is called as readout weights, the only learnable parameters of the reservoir computer architecture in this project: 
+
+<img src="https://latex.codecogs.com/svg.image?\mathbf{W^{out}}&space;=&space;||\mathbf{Y}_t-\mathbf{W}^{out}\mathbf{X}||^2&plus;\lambda&space;||\mathbf{W^{out}}||^2" title="\mathbf{W^{out}} = ||\mathbf{Y}_t-\mathbf{W}^{out}\mathbf{X}||^2+\lambda ||\mathbf{W^{out}}||^2" />
+
+which is an offline algorithm. Here, <img src="https://latex.codecogs.com/svg.image?\mathbf{Y}_t\in\mathbb{R}^{m\times&space;k_{tr}}" title="\mathbf{Y}_t\in\mathbb{R}^{m\times k_{tr}}" /> is the target matrix containing the <img src="https://latex.codecogs.com/svg.image?k_{tr}" title="k_{tr}" /> targets values for the *m* outputs of the reservoir computer, when inputs vectors are fed to the reservoir during <img src="https://latex.codecogs.com/svg.image?k_{tr}" title="k_{tr}" /> time steps. 
 
 ![ESN_overview](./assets/ESN_overview.png)
 
