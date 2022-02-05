@@ -52,7 +52,10 @@ pip install -r requirements.txt
 
 #### 2.2 Dataset
 
+##### MNIST
 
+- https://www.kaggle.com/oddrationale/mnist-in-csv
+- http://yann.lecun.com/exdb/mnist/
 
 ## 3.Reference
 
