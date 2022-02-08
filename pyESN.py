@@ -31,8 +31,9 @@ def identity(x):
 class ESN():
 
     def __init__(self, n_inputs, n_outputs, n_reservoir=200,
-                 spectral_radius=0.95, sparsity=0, noise=0.001, input_shift=None,
-                 input_scaling=None, teacher_forcing=True, feedback_scaling=None,
+                 spectral_radius=0.95, sparsity=0, noise=0.001, 
+                 wash_out = 100, W_in_scaling=None,
+                 input_shift=None, input_scaling=None, teacher_forcing=True, feedback_scaling=None,
                  teacher_scaling=None, teacher_shift=None,
                  out_activation=identity, inverse_out_activation=identity,
                  random_state=None, silent=True):
@@ -66,6 +67,8 @@ class ESN():
         self.noise = noise
         self.input_shift = correct_dimensions(input_shift, n_inputs)
         self.input_scaling = correct_dimensions(input_scaling, n_inputs)
+        self.W_in_scaling = W_in_scaling
+        self.wash_out = wash_out
 
         self.teacher_scaling = teacher_scaling
         self.teacher_shift = teacher_shift
@@ -104,13 +107,14 @@ class ESN():
         # random input weights:
         self.W_in = self.random_state_.rand(
             self.n_reservoir, self.n_inputs) * 2 - 1
+        if self.W_in_scaling is not None:
+            self.W_in *= self.W_in_scaling 
         # random feedback (teacher forcing) weights:
         self.W_feedb = self.random_state_.rand(
             self.n_reservoir, self.n_outputs) * 2 - 1
 
     def _update(self, state, input_pattern, output_pattern):
         """performs one update step.
-
         i.e., computes the next network state by applying the recurrent weights
         to the last state & and feeding in the current input and output patterns
         """
@@ -164,30 +168,24 @@ class ESN():
             the network's output on the training data, using the trained weights
         """
         # transform any vectors of shape (x,) into vectors of shape (x,1):
-        if inputs.ndim < 2:
-            inputs = np.reshape(inputs, (len(inputs), -1))
-        if outputs.ndim < 2:
-            outputs = np.reshape(outputs, (len(outputs), -1))
+        if inputs.ndim < 2: inputs = np.reshape(inputs, (len(inputs), -1))
+        if outputs.ndim < 2: outputs = np.reshape(outputs, (len(outputs), -1))
         # transform input and teacher signal:
-        inputs_scaled = self._scale_inputs(inputs)
-        teachers_scaled = self._scale_teacher(outputs)
-
-        if not self.silent:
-            print("[INFO] Harvesting states...")
+        teachers_scaled = self._scale_teacher(outputs) if self.teacher_forcing else outputs
+        inputs_scaled = self._scale_inputs(inputs) if self.input_shift is not None or self.input_scaling is not None else inputs
+        if not self.silent: print("[INFO] Harvesting states...")
         # step the reservoir through the given input,output pairs:
         states = np.zeros((inputs.shape[0], self.n_reservoir))
-        for n in tqdm(range(1, inputs.shape[0])):
-            states[n, :] = self._update(states[n - 1], inputs_scaled[n, :],
-                                        teachers_scaled[n - 1, :])
-
+        for n in tqdm(range(1, inputs.shape[0]), disable=self.silent):
+            states[n, :] = self._update(states[n - 1], inputs_scaled[n, :],teachers_scaled[n - 1, :])
         # learn the weights, i.e. find the linear combination of collected
         # network states that is closest to the target output
-        if not self.silent:
-            print("[INFO] Fitting...")
+        if not self.silent: print("[INFO] Fitting...")
         # we'll disregard the first few states:
-        transient = min(int(inputs.shape[1] / 10), 100)
+        transient = min(int(inputs.shape[1] / 10), self.wash_out)
         # include the raw inputs:
         extended_states = np.hstack((states, inputs_scaled))
+        self.states = extended_states
         # Solve for W_out:
         self.W_out = np.dot(np.linalg.pinv(extended_states[transient:, :]),
                             self.inverse_out_activation(teachers_scaled[transient:, :])).T
@@ -205,13 +203,9 @@ class ESN():
             plt.imshow(extended_states.T, aspect='auto', interpolation='nearest')
             plt.colorbar()
 
-        if not self.silent:
-            print("[INFO] Training error:")
         # apply learned weights to the collected states:
         pred_train = self._unscale_teacher(self.out_activation(
             np.dot(extended_states, self.W_out.T)))
-        if not self.silent:
-            print(np.sqrt(np.mean((pred_train - outputs)**2)))  # MSE
         return pred_train
 
     def predict(self, inputs, continuation=True):
@@ -244,7 +238,7 @@ class ESN():
         outputs = np.vstack(
             [lastoutput, np.zeros((n_samples, self.n_outputs))])
 
-        for n in tqdm(range(n_samples)):
+        for n in tqdm(range(n_samples), disable=self.silent):
             states[n + 1, :] = self._update(states[n, :], inputs[n + 1, :], outputs[n, :])
             outputs[n + 1, :] = self.out_activation(np.dot(
                 self.W_out, np.concatenate([states[n + 1, :], inputs[n + 1, :]])))
