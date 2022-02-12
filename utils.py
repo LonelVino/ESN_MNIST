@@ -1,0 +1,51 @@
+import os
+import inspect
+import numpy as np
+
+def load_parent_dir():
+	currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+	parentdir = os.path.dirname(currentdir)
+	return parentdir
+
+def correct_dimensions(s, targetlength):
+    """checks the dimensionality of some numeric arguments, broadcasts it to the specified length if possible.
+    Args:
+        s: None, scalar or 1D array
+        targetlength: expected length of s
+    Returns:
+        None if s is None, else numpy vector of length targetlength
+    """
+    if s is not None:
+        s = np.array(s)
+        if s.ndim == 0:
+            s = np.array([s] * targetlength)
+        elif s.ndim == 1:
+            if not len(s) == targetlength:
+                raise ValueError("arg must have length " + str(targetlength))
+        else:
+            raise ValueError("Invalid argument")
+    return s
+
+def identity(x): return x
+
+def one_hot(y, n_labels, dtype=int):
+        """Returns a matrix where each sample in y is represented as a row, 
+            and each column represents the class label in the one-hot encoding scheme.
+        Args:
+            y (1d-array): the data to be encoded
+            n_labels (int): the number of categories
+        """
+        mat = np.zeros((len(y), n_labels))
+        for i, val in enumerate(y):
+            mat[i, val] = 1
+        return mat.astype(dtype)    
+
+def quantize(data, n_bins):
+    '''Quantize data according to the number of bins
+    '''
+    bins = np.linspace(start=np.min(data), stop=np.max(data), num=n_bins, dtype=float)
+    return np.digitize(data, bins, right=True)
+
+
+
+
