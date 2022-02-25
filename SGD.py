@@ -39,6 +39,7 @@ class SoftmaxSGD(object):
     def __init__(self, eta=0.01, epochs=50,
                  l2=0.0,
                  minibatches=1,
+                 weights = None,
                  n_classes=None,
                  random_seed=None,
                  silent=True):
@@ -47,46 +48,47 @@ class SoftmaxSGD(object):
         self.epochs = epochs
         self.l2 = l2
         self.minibatches = minibatches
+        self.w_ = weights
         self.n_classes = n_classes
         self.random_seed = random_seed
         self.silent = silent
+        
 
-    def _fit(self, X, y, init_params=True, is_log=False):
+    def _fit(self, X, y, init_params=True):
         if init_params:
             if self.n_classes is None: self.n_classes = np.max(y) + 1
             self._n_features = X.shape[1]
             self.w_ = self._init_params(
-                weights_shape=(self._n_features, self.n_classes), random_seed=self.random_seed)
+                weights_shape=(self._n_features, self.n_classes), random_seed=self.random_seed)  # w_ -> n_feat x n_classes
             self.cost_ = []
 
         y_enc = self._one_hot(y=y, n_labels=self.n_classes, dtype=np.float)
 
         for i in tqdm(range(self.epochs), disable=self.silent):
             for idx in self._yield_minibatches_idx(n_batches=self.minibatches, data_ary=y, shuffle=True):
-                # net_input, softmax and diff -> n_samples x n_classes
-                net = self._net_input(X[idx], self.w_)  # w_ -> n_feat x n_classes
+                # net_input, softmax, diff and y_enc -> n_samples x n_classes
+                net = self._net_input(X[idx], self.w_) 
                 softm = self._softmax(net)
                 diff = softm - y_enc[idx]
                 mse = np.mean(diff, axis=0)
 
-                grad = np.dot(X[idx].T, diff)/(X.shape[0]*self.n_classes) # gradient -> n_features x n_classes
+                grad = np.dot(X[idx].T, diff)/(X.shape[0]) # gradient -> n_features x n_classes
                 
                 # update in opp. direction of the cost gradient
                 self.w_ -= (self.eta * grad + self.eta * self.l2 * self.w_)
 
             # compute cost of the whole epoch
-            net = self._net_input(X, self.w_)
-#             softm = self._softmax(net)
-#             cross_ent = self._cross_entropy(output=softm, y_target=y_enc)
-            lsm = self._log_softmax(net)
-            cross_ent = self._cross_entropy(output=lsm, y_target=y_enc, is_log=is_log)
-            print('[Epoch %d] (Maximum, Mean, Minimum) Cross Entropy: %.2f, %.2f, %.2f'%\
-                  (i, np.max(cross_ent), np.mean(cross_ent), np.min(cross_ent)))
-            cost = self._cost(cross_ent)
-            self.cost_.append(cost)
+            net = self._net_input(X, self.w_) # net -> n_samples x n_classes
+            softm = self._softmax(net)
+            cross_ent = self._cross_entropy(output=softm, y_target=y_enc)
+#             print('[Epoch %d] (Maximum, Mean, Minimum) Cross Entropy: %.2f, %.2f, %.2f'%\
+#                   (i, np.max(cross_ent), np.mean(cross_ent), np.min(cross_ent)))
+            print(cross_ent.shape)
+#             cost = self._cost(cross_ent)
+#             self.cost_.append(cost)
         return self
 
-    def fit(self, X, y, init_params=True, is_log=False):
+    def fit(self, X, y, init_params=True):
         """Learn model from training data.
 
         Parameters
@@ -108,7 +110,7 @@ class SoftmaxSGD(object):
         """
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
-        self._fit(X=X, y=y, init_params=init_params, is_log=is_log)
+        self._fit(X=X, y=y, init_params=init_params)
         self._is_fitted = True
         return self
     
@@ -157,24 +159,23 @@ class SoftmaxSGD(object):
         return X.dot(W)
 
     def _softmax(self, z):
-        return (np.exp(z.T) / np.sum(np.exp(z), axis=1)).T
+        ''' z -> [n_samples x n_classes] '''
+        return (np.exp(z.T) / np.sum(np.exp(z), axis=1)).T  # -> n_classes x n_samples
     
     def _log_softmax(self, z):
+        ''' z -> [n_samples x n_classes] '''
         zdev = z - np.max(z, axis=1)[:,None]  # zdev - np.log(np.sum(np.exp(zdev)))
-        return zdev
+        return zdev  # zdev -> [n_samples x n_classes]  
 
-    def _cross_entropy(self, output, y_target, is_log=False):
+    def _cross_entropy(self, output, y_target):
         '''
 		Args:
-		    output: probabilities in classification (n_samples * classes)
-		    target: one hot matrix in classification (n_samples * classes)
+		    output: probabilities in classification -> (n_samples * classes)
+		    target: one hot matrix in classification -> (n_samples * classes)
 		Returns:
-		    cross_entropy: a vector (n_samples * 1)
-		'''
-        if is_log:
-            return - np.sum(output * (y_target), axis=1)
-        else:
-            return - np.sum(np.log(output) * (y_target), axis=1)
+		    cross_entropy: a vector (n_samples * 1
+        '''
+        return - np.sum(np.log(output) * (y_target), axis=1)
 
     def _cost(self, cross_entropy):
         L2_term = self.l2 * np.sum(self.w_ ** 2)

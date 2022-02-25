@@ -40,12 +40,22 @@ def one_hot(y, n_labels, dtype=int):
             mat[i, val] = 1
         return mat.astype(dtype)    
 
-def quantize(data, n_bins):
-    '''Quantize data according to the number of bins
+def quantize(data, num_bins):
+    bins = np.linspace(start=np.min(data), stop=np.max(data), num=num_bins, dtype=float)
+    quantized = np.digitize(data, bins, right=True).astype(float)
+    quantized *= (np.max(data) - np.min(data)) / (np.max(quantized) - np.min(quantized))   # scale the quantized data into the same size of the original data
+    return quantized + np.min(data)  # add bias to the quantized data 
+    
+    
+def SLM_update(state, intensity, alpha, beta):
+    ''' Update states by SLM system
+    Args:
+        state (1d-array): the previous data(already calculated) 
+            used to update new state -> n_reservoir x 1
+        intensity, alpha, beta: hyperparameters
     '''
-    bins = np.linspace(start=np.min(data), stop=np.max(data), num=n_bins, dtype=float)
-    return np.digitize(data, bins, right=True)
-
+    new_state = quantize(intensity * quantize(np.sin(state)**2, 8), 10)
+    return new_state
 
 
 
