@@ -8,9 +8,9 @@ class ESN(BaseEstimator):
 
     def __init__(self, n_inputs, n_outputs, n_reservoir=200,
                  spectral_radius=0.95, sparsity=0, noise=0.001, ridge_noise=0.001,
-                 wash_out = 100, learn_method="ridge", 
+                 wash_out = 100, learn_method="ridge", SGD_clf=None,
                  state_activation=np.tanh, leaky_rate=1.0, 
-                 is_SLM=False, intensity=0.1, alpha=0.5, beta=0.5,
+                 is_SLM=False, intensity=0.1,
                  out_activation=identity, inverse_out_activation=identity,
                  W_in_scaling=None, W_feedb_scaling=None,
                  input_shift=None, input_scaling=None, 
@@ -18,21 +18,25 @@ class ESN(BaseEstimator):
                  random_state=None, silent=True):
         """
         Args:
+        [Initialization]
             n_inputs: nr of input dimensions
             n_outputs: nr of output dimensions
             n_reservoir: nr of reservoir neurons
             spectral_radius: spectral radius of the recurrent weight matrix
             sparsity: proportion of recurrent weights set to zero
-            noise: noise added to each neuron (regularization)
+            noise: noise added to each neuron when updating (regularization)
             ridge_noise: noise added in the ridge regression (regulatization)
             wash_out: duration/length of the washout (discarding transient from initial conditions)
+        [Training]    
             learn_method: the learn method used to compute the output weights matrix 
-                        options: ['pinv', 'ridge']
+                        options: ['pinv', 'ridge', 'SGD']
+            SGD_clf: sklearn.linear_model.SGDclassifier, if learn_method=='SGD'
             state_activation: activation function used in updating reservoir states  
             leaky_rate: leaky rate of Leaky-Integrator ESN (LIESN), used to improve STM 
             is_SLM: if use LSM as the state activation
             out_activation: output activation function (applied to the readout)
             inverse_out_activation: inverse of the output activation function
+        [Scaling & Shifting]
             W_in_scaling: scale of the input weights matrix range 
             W_feedb_scaling: scale of the feedback weights matrix range 
             input_shift: scalar or vector of length n_inputs to add to each
@@ -42,9 +46,10 @@ class ESN(BaseEstimator):
             teacher_forcing: if True, feed the target back into output units
             teacher_scaling: factor applied to the target signal
             teacher_shift: additive term applied to the target signal
+        [Others]
             random_state: positive integer seed, np.rand.RandomState object,
                           or None to use numpy's builting RandomState.
-            silent: suppress messages
+            silent: suppress messages if silent=True
             """
         # check for proper dimensionality of all arguments and write them down.
         self.n_inputs = n_inputs
@@ -56,9 +61,10 @@ class ESN(BaseEstimator):
         self.ridge_noise = ridge_noise
         self.wash_out = wash_out
         self.learn_method = learn_method
+        self.SGD_clf = SGD_clf
         self.state_activation = state_activation
         self.leaky_rate = leaky_rate
-        self.is_SLM = is_SLM; self.intensity = intensity; self.alpha = alpha; self.beta = beta
+        self.is_SLM = is_SLM; self.intensity = intensity
         self.out_activation = out_activation
         self.inverse_out_activation = inverse_out_activation
         self.W_in_scaling = W_in_scaling
@@ -99,14 +105,45 @@ class ESN(BaseEstimator):
         self.W_feedb = self.random_state_.rand(self.n_reservoir, self.n_outputs) * 2 - 1
         if self.W_feedb_scaling is not None: self.W_in *= self.W_in_scaling
 
+    def _scale_inputs(self, inputs):
+        """For each input dimension j: multiplies by the j'th entry in the
+            input_scaling argument, then adds the j'th entry of the input_shift
+            argument.
+        """
+        if self.input_scaling is not None: inputs = np.dot(inputs, np.diag(self.input_scaling))
+        if self.input_shift is not None: inputs = inputs + self.input_shift
+        return inputs
+
+    def _scale_teacher(self, teacher):
+        """Multiplies the teacher/target signal by the teacher_scaling argument,
+            then adds the teacher_shift argument to it."""
+        if self.teacher_scaling is not None: teacher = teacher * self.teacher_scaling
+        if self.teacher_shift is not None: teacher = teacher + self.teacher_shift
+        return teacher
+
+    def _unscale_teacher(self, teacher_scaled):
+        """Inverse operation of the _scale_teacher method."""
+        if self.teacher_shift is not None: teacher_scaled = teacher_scaled - self.teacher_shift
+        if self.teacher_scaling is not None: teacher_scaled = teacher_scaled / self.teacher_scaling
+        return teacher_scaled
+
+
+    def _SLM(self, input_pattern, state, intensity=1.0):
+        '''An Activation function simulating the photonic reservoir
+        Args:
+            intensity (float)
+        '''
+        preactivation = quantize(np.dot(self.W, state) + np.dot(self.W_in, input_pattern), num_bins=2**8)
+        return quantize(intensity*(np.sin(preactivation)**2), num_bins=2**10)
+    
     def _update(self, state, input_pattern, output_pattern):
         """performs one update step.
-        i.e., computes the next network state by applying the recurrent weights
-        to the last state & and feeding in the current input and output patterns
+            i.e., computes the next network state by applying the recurrent weights
+            to the last state & and feeding in the current input and output patterns
         """
         if self.is_SLM:
             return (1-self.leaky_rate)*state \
-                    + self._SLM(input_pattern, state) \
+                    + self._SLM(input_pattern, state, self.intensity) \
                     + self.noise * (self.random_state_.rand(self.n_reservoir) - 0.5)
 
         if self.teacher_forcing:
@@ -118,53 +155,6 @@ class ESN(BaseEstimator):
         return (1-self.leaky_rate)*state + self.state_activation(preactivation) \
                 + self.noise * (self.random_state_.rand(self.n_reservoir) - 0.5)  # regularization
     
-    def _SLM(self, input_pattern, state, intensity=1.0, alpha=1.0, beta=1.0):
-        '''An Activation function simulating the photonic reservoir
-        Args:
-            intensity (float)
-            alpha (float): expected spetral radius of W_res matrix, [0.0, 1.0]
-            beta (float): expected spetral radius of W_in matrix, [0.0, 1.0]
-        '''
-        preactivation = quantize(np.dot(alpha*self.W, state) + np.dot(beta*self.W_in, input_pattern), n_bins=2**8)
-        return quantize(intensity*(np.sin(preactivation)**2), n_bins=2**10)
-    
-    def _ridge(self, X, Y):
-        '''Compute readout weights matrix [Ridge Regression]
-        Args:
-            X : reservoir states matrix, (num_samples * N)
-            Y : true outputs, (num_samples * output_dim)
-        Returns:
-            W_out: readout weights matrix, (output_dim * N)
-        '''
-        return np.dot(np.dot(Y.T, X), np.linalg.inv(np.dot(X.T, X) + self.ridge_noise*np.eye(self.n_reservoir+self.n_inputs)))
-    
-
-    def _pinv(self, X, Y):
-        '''Compute readout weights matrix [Moore-Penrose Pseudo Inverse]
-        Args & Returns: Same as self._ridge()
-        '''
-        return np.dot(np.linalg.pinv(X), Y).T
-       
-    def _scale_inputs(self, inputs):
-        """for each input dimension j: multiplies by the j'th entry in the
-        input_scaling argument, then adds the j'th entry of the input_shift
-        argument."""
-        if self.input_scaling is not None: inputs = np.dot(inputs, np.diag(self.input_scaling))
-        if self.input_shift is not None: inputs = inputs + self.input_shift
-        return inputs
-
-    def _scale_teacher(self, teacher):
-        """multiplies the teacher/target signal by the teacher_scaling argument,
-        then adds the teacher_shift argument to it."""
-        if self.teacher_scaling is not None: teacher = teacher * self.teacher_scaling
-        if self.teacher_shift is not None: teacher = teacher + self.teacher_shift
-        return teacher
-
-    def _unscale_teacher(self, teacher_scaled):
-        """inverse operation of the _scale_teacher method."""
-        if self.teacher_shift is not None: teacher_scaled = teacher_scaled - self.teacher_shift
-        if self.teacher_scaling is not None: teacher_scaled = teacher_scaled / self.teacher_scaling
-        return teacher_scaled
 
     def fit(self, inputs, outputs):
         """Collect the network's reaction to training data, train readout weights.
@@ -178,29 +168,28 @@ class ESN(BaseEstimator):
         # transform any vectors of shape (x,) into vectors of shape (x,1):
         if inputs.ndim < 2: inputs = np.reshape(inputs, (len(inputs), -1))
         if outputs.ndim < 2: outputs = np.reshape(outputs, (len(outputs), -1))
-        
         # transform input and teacher signal:
         teachers_scaled = self._scale_teacher(outputs) if self.teacher_forcing else outputs
         inputs_scaled = self._scale_inputs(inputs) if self.input_shift is not None or self.input_scaling is not None else inputs
         
+        ### Harvesting States
         if not self.silent: print("[INFO] Harvesting states...")
-        # step the reservoir through the given input,output pairs:
         states = np.zeros((inputs.shape[0], self.n_reservoir))
         for n in tqdm(range(1, inputs.shape[0]), disable=self.silent):
             states[n, :] = self._update(states[n - 1], inputs_scaled[n, :],teachers_scaled[n - 1, :])
-        # learn the weights, i.e. find the linear combination of collected
-        # network states that is closest to the target output
-        if not self.silent: print("[INFO] Fitting...")
-        # we'll disregard the first few states:
-        transient = min(int(inputs.shape[1] / 10), self.wash_out)
-        # include the raw inputs:
-        extended_states = np.hstack((states, inputs_scaled))
+        transient = min(int(inputs.shape[1] / 10), self.wash_out)  # disregard the first few states:
+        extended_states = np.hstack((states, inputs_scaled))  # include the raw inputs
         self.states = extended_states
-        # Solve for W_out:
+        
+        ### Training output matrix (readout layer)
+        if not self.silent: print("[INFO] Training Readout Layer...")
         if self.learn_method == 'ridge':
-            self.W_out = self._ridge(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]))
+            self.W_out = ridge(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]), self.ridge_noise)
         elif self.learn_method == 'pinv':
-            self.W_out = self._pinv(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]))
+            self.W_out = pinv(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]))
+        elif self.learn_method == 'SGD':
+            self.SGD_clf.fit(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]))
+            self.W_out = self.SGD_clf.coef_
         else:
             raise ValueError("Invalid Learning Method")
 
@@ -209,7 +198,7 @@ class ESN(BaseEstimator):
         self.lastinput = inputs[-1, :]
         self.lastoutput = teachers_scaled[-1, :]
 
-        # apply learned weights to the collected states:
+        # Estimate training set by applying learned weights to the extended states
         pred_train = self._unscale_teacher(self.out_activation(
             np.dot(extended_states, self.W_out.T)))
         return pred_train
@@ -248,4 +237,3 @@ class ESN(BaseEstimator):
         
     def predict_proba(self, inputs, continuation=True):
         return self._predict(inputs=inputs, continuation=continuation)
-       
