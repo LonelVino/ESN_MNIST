@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.base import BaseEstimator
 from utils import * 
-
+from RLS import RLS
 
 class ESN(BaseEstimator):
 
@@ -33,7 +33,7 @@ class ESN(BaseEstimator):
             SGD_clf: sklearn.linear_model.SGDclassifier, if learn_method=='SGD'
             state_activation: activation function used in updating reservoir states  
             leaky_rate: leaky rate of Leaky-Integrator ESN (LIESN), used to improve STM 
-            is_SLM: if use LSM as the state activation
+            is_SLM: if use SLM as the state activation
             out_activation: output activation function (applied to the readout)
             inverse_out_activation: inverse of the output activation function
         [Scaling & Shifting]
@@ -52,6 +52,7 @@ class ESN(BaseEstimator):
             silent: suppress messages if silent=True
             """
         # check for proper dimensionality of all arguments and write them down.
+        self._estimator_type = 'classifier'
         self.n_inputs = n_inputs
         self.n_reservoir = n_reservoir
         self.n_outputs = n_outputs
@@ -177,19 +178,25 @@ class ESN(BaseEstimator):
         states = np.zeros((inputs.shape[0], self.n_reservoir))
         for n in tqdm(range(1, inputs.shape[0]), disable=self.silent):
             states[n, :] = self._update(states[n - 1], inputs_scaled[n, :],teachers_scaled[n - 1, :])
-        transient = min(int(inputs.shape[1] / 10), self.wash_out)  # disregard the first few states:
         extended_states = np.hstack((states, inputs_scaled))  # include the raw inputs
         self.states = extended_states
         
         ### Training output matrix (readout layer)
         if not self.silent: print("[INFO] Training Readout Layer...")
+        transient = min(int(inputs.shape[1] / 10), self.wash_out)  # Wash-out Length (disregard the first few states)
+        train_states = extended_states[transient:, :]
+        targets = self.inverse_out_activation(teachers_scaled[transient:, :])
         if self.learn_method == 'ridge':
-            self.W_out = ridge(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]), self.ridge_noise)
+            self.W_out = ridge(train_states, targets, self.ridge_noise)
         elif self.learn_method == 'pinv':
-            self.W_out = pinv(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]))
+            self.W_out = pinv(train_states, targets)
         elif self.learn_method == 'SGD':
-            self.SGD_clf.fit(extended_states[transient:, :], self.inverse_out_activation(teachers_scaled[transient:, :]))
+            self.SGD_clf.fit(train_states, targets)
             self.W_out = self.SGD_clf.coef_
+        elif self.learn_method == 'RLS':
+            RLS_ = RLS(num_vars=extended_states.shape[1], num_classes=self.n_outputs)
+            RLS_.fit(train_states, targets)
+            self.W_out = RLS_.w.T
         else:
             raise ValueError("Invalid Learning Method")
 
@@ -203,7 +210,7 @@ class ESN(BaseEstimator):
             np.dot(extended_states, self.W_out.T)))
         return pred_train
 
-    def _predict(self, inputs, continuation=True):
+    def _predict(self, inputs, continuation=False):
         """Apply the learned weights to the network's reactions to new input.
         Args:
             inputs: array of dimensions (N_test_samples x n_inputs)
