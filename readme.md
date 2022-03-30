@@ -2,17 +2,19 @@
 
 ![](https://img.shields.io/badge/Python-v3.8-orange)![Numpy](https://camo.githubusercontent.com/a1c5e9056e3be1e1058d8517b025af60f61f75395a78245776db71a7703aff9c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6e756d70792d2532333031333234332e7376673f7374796c653d666f722d7468652d6261646765266c6f676f3d6e756d7079266c6f676f436f6c6f723d7768697465) ![Kaggle](https://camo.githubusercontent.com/9ec86d990dbc1eeab84728664a57e0fbac84211d2c6cda5a2cf10288e37e7306/68747470733a2f2f726f61642d746f2d6b6167676c652d6772616e646d61737465722e76657263656c2e6170702f6170692f73696d706c652f737562696e69756d)
 
+![reservoir_animation](/home/lonelvino/MyGit/ESN_MNIST/assets/reservoir_animation.gif)
 
+![ESN_structure](./assets/ESN_structure.png)
 
 ## 1. Prerequisites
 
 #### 1.1 Dependencies
 
- * [Numpy](http://www.numpy.org/)
+ * [Numpy](http://www.numpy.org/) (for mathematical computation)
  * [Matlplotlib](http://matplotlib.org/) (for graphing)
- * [tqdm](https://github.com/tqdm/tqdm)
- * [sklearn](https://scikit-learn.org/stable/)
- * [bayes_opt](https://github.com/fmfn/BayesianOptimization)
+ * [tqdm ](https://github.com/tqdm/tqdm) (progress bar)
+ * [sklearn](https://scikit-learn.org/stable/) (powerful machine learning library)
+ * [bayes_opt](https://github.com/fmfn/BayesianOptimization) (for bayesian optimization)
 
 ```bash
 git clone git@github.com:LonelVino/ESN_MNIST.git
@@ -29,9 +31,15 @@ pip install -r requirements.txt
 
 #### 1.3 Test Case
 
-[ESN MNIST (Jupyter notebook)](https://github.com/LonelVino/ESN_MNIST/blob/main/%5BESN%5DNiyamas_MNIST.ipynb)
+The core of ESN is in [pyESN](https://github.com/LonelVino/ESN_MNIST/blob/main/pyESN.py). 
 
-If there are errors while running this notebook locally,  you can also refer to the notebook mounted on kaggle: [[ESN] MNIST Classification](https://www.kaggle.com/lonelvino/esn-mnist-classification-niyamas).
+You can test this ESN with the MNIST classification task by running this notebook:  [ESN MNIST (Jupyter notebook)](https://github.com/LonelVino/ESN_MNIST/blob/main/%5BESN%5DNiyamas_MNIST.ipynb).    
+
+> If there are errors while running this notebook locally,  you can also test this notebook mounted on kaggle: [[ESN] MNIST Classification](https://www.kaggle.com/lonelvino/esn-mnist-classification-niyamas).
+
+The classification accuracy on MNIST database ended at 98.76%. 
+
+![CM_best](./assets/CM_best.png)
 
 ## 2. Introduction
 
