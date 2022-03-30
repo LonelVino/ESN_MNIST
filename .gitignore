@@ -1,5 +1,4 @@
 *.pyc
-*.ipynb
 *.zip
 
 .ipynb_checkpoints
@@ -8,3 +7,4 @@ __pycache__
 
 
 assets/dataset
+Notebook/

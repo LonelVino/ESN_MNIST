@@ -4,11 +4,7 @@
 
 ## 0. Notebooks Link
 
-Considering the convenience, some notebooks are saved in kaggle
-
-- [HOG MNIST](https://www.kaggle.com/lonelvino/hog-mnist)
-- [[ESN] Similarity Learning](https://www.kaggle.com/lonelvino/esn-mnist-classification)
-- [[ESN] MNIST Classification](https://www.kaggle.com/lonelvino/esn-mnist-classification)
+The notebook is also saved in kaggle: [[ESN] MNIST Classification](https://www.kaggle.com/lonelvino/esn-mnist-classification-niyamas)
 
 ## 1. Introduction
 
@@ -50,7 +46,8 @@ which is an offline algorithm. Here, <img src="https://latex.codecogs.com/svg.im
  * [Numpy](http://www.numpy.org/)
  * [Matlplotlib](http://matplotlib.org/) (for graphing)
  * [tqdm](https://github.com/tqdm/tqdm)
- * [pytorch](https://pytorch.org/)
+ * [sklearn](https://scikit-learn.org/stable/)
+ * [bayes_opt](https://github.com/fmfn/BayesianOptimization)
 
 ```bash
 git clone git@github.com:LonelVino/ESN_MNIST.git
