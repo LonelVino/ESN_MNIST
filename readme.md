@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/badge/Python-v3.8-orange)![Numpy](https://camo.githubusercontent.com/a1c5e9056e3be1e1058d8517b025af60f61f75395a78245776db71a7703aff9c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6e756d70792d2532333031333234332e7376673f7374796c653d666f722d7468652d6261646765266c6f676f3d6e756d7079266c6f676f436f6c6f723d7768697465) ![Kaggle](https://camo.githubusercontent.com/9ec86d990dbc1eeab84728664a57e0fbac84211d2c6cda5a2cf10288e37e7306/68747470733a2f2f726f61642d746f2d6b6167676c652d6772616e646d61737465722e76657263656c2e6170702f6170692f73696d706c652f737562696e69756d)
 
-![reservoir_animation](/home/lonelvino/MyGit/ESN_MNIST/assets/reservoir_animation.gif)
+![reservoir_animation](./assets/reservoir_animation.gif)
 
 ![ESN_structure](./assets/ESN_structure.png)
 
