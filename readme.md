@@ -2,11 +2,38 @@
 
 ![](https://img.shields.io/badge/Python-v3.8-orange)![Numpy](https://camo.githubusercontent.com/a1c5e9056e3be1e1058d8517b025af60f61f75395a78245776db71a7703aff9c/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6e756d70792d2532333031333234332e7376673f7374796c653d666f722d7468652d6261646765266c6f676f3d6e756d7079266c6f676f436f6c6f723d7768697465) ![Kaggle](https://camo.githubusercontent.com/9ec86d990dbc1eeab84728664a57e0fbac84211d2c6cda5a2cf10288e37e7306/68747470733a2f2f726f61642d746f2d6b6167676c652d6772616e646d61737465722e76657263656c2e6170702f6170692f73696d706c652f737562696e69756d)
 
-## 0. Notebooks Link
 
-The notebook is also saved in kaggle: [[ESN] MNIST Classification](https://www.kaggle.com/lonelvino/esn-mnist-classification-niyamas)
 
-## 1. Introduction
+## 1. Prerequisites
+
+#### 1.1 Dependencies
+
+ * [Numpy](http://www.numpy.org/)
+ * [Matlplotlib](http://matplotlib.org/) (for graphing)
+ * [tqdm](https://github.com/tqdm/tqdm)
+ * [sklearn](https://scikit-learn.org/stable/)
+ * [bayes_opt](https://github.com/fmfn/BayesianOptimization)
+
+```bash
+git clone git@github.com:LonelVino/ESN_MNIST.git
+cd ESN_MNIST
+pip install -r requirements.txt
+```
+
+#### 1.2 Dataset
+
+##### MNIST
+
+- https://www.kaggle.com/oddrationale/mnist-in-csv
+- http://yann.lecun.com/exdb/mnist/
+
+#### 1.3 Test Case
+
+[ESN MNIST (Jupyter notebook)](https://github.com/LonelVino/ESN_MNIST/blob/main/%5BESN%5DNiyamas_MNIST.ipynb)
+
+If there are errors while running this notebook locally,  you can also refer to the notebook mounted on kaggle: [[ESN] MNIST Classification](https://www.kaggle.com/lonelvino/esn-mnist-classification-niyamas).
+
+## 2. Introduction
 
 [Echo State Network](http://www.scholarpedia.org/article/Echo_state_network) is easy-to-train recurrent neural networks, a variant of [Reservoir Computing](https://en.wikipedia.org/wiki/Reservoir_computing). In some sense, which aims to simplify training process, reduce computation and overcome fading memory problem of RNN. In this project, the system model is designed as follow:
 
@@ -39,28 +66,7 @@ which is an offline algorithm. Here, <img src="https://latex.codecogs.com/svg.im
 
 ![ESN_overview](./assets/ESN_overview.png)
 
-## 2. Prerequisites
 
-#### 2.1 Dependencies
-
- * [Numpy](http://www.numpy.org/)
- * [Matlplotlib](http://matplotlib.org/) (for graphing)
- * [tqdm](https://github.com/tqdm/tqdm)
- * [sklearn](https://scikit-learn.org/stable/)
- * [bayes_opt](https://github.com/fmfn/BayesianOptimization)
-
-```bash
-git clone git@github.com:LonelVino/ESN_MNIST.git
-cd ESN_MNIST
-pip install -r requirements.txt
-```
-
-#### 2.2 Dataset
-
-##### MNIST
-
-- https://www.kaggle.com/oddrationale/mnist-in-csv
-- http://yann.lecun.com/exdb/mnist/
 
 ## 3.Reference
 
